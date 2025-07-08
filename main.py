@@ -3,20 +3,35 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-# Load data
-kas_df = pd.read_csv("kas.csv")
-anggota_df = pd.read_csv("anggota.csv")
-simpan_pinjam_df = pd.read_csv("simpan_pinjam.csv")
-jurnal_df = pd.read_csv("jurnal.csv")
+# -------------------------------
+# Load dan perbaiki data
+# -------------------------------
+try:
+    kas_df = pd.read_csv("kas.csv", on_bad_lines='skip', encoding='utf-8')
+except Exception as e:
+    st.error(f"❌ Gagal memuat data kas.csv: {e}")
+    st.stop()
 
-# Format tanggal
-kas_df['Tanggal'] = pd.to_datetime(kas_df['Tanggal'])
+kas_df["Tanggal"] = pd.to_datetime(kas_df["Tanggal"], errors="coerce")
 
+try:
+    anggota_df = pd.read_csv("anggota.csv")
+    simpan_pinjam_df = pd.read_csv("simpan_pinjam.csv")
+    jurnal_df = pd.read_csv("jurnal.csv")
+except:
+    anggota_df = pd.DataFrame()
+    simpan_pinjam_df = pd.DataFrame()
+    jurnal_df = pd.DataFrame()
+
+# -------------------------------
 # Sidebar menu
+# -------------------------------
 st.sidebar.title("Koperasi Sumber Arta Wanita")
 menu = st.sidebar.selectbox("Pilih Menu", ["Dashboard", "Buku Kas", "Data Anggota", "Simpan Pinjam", "Jurnal Umum"])
 
+# -------------------------------
 # Dashboard
+# -------------------------------
 if menu == "Dashboard":
     st.title("📊 Dashboard Koperasi")
 
@@ -39,7 +54,9 @@ if menu == "Dashboard":
     plt.ylabel("Jumlah (Rp)")
     st.pyplot(fig)
 
+# -------------------------------
 # Buku Kas
+# -------------------------------
 elif menu == "Buku Kas":
     st.title("📒 Buku Kas")
 
@@ -47,7 +64,8 @@ elif menu == "Buku Kas":
     for i, row in kas_df.sort_values(by="Tanggal", ascending=False).reset_index().iterrows():
         col1, col2 = st.columns([6, 1])
         with col1:
-            st.write(f"📅 **{row['Tanggal'].date()}** | {row['Kategori']} | {row['Keterangan']} — Rp {row['Jumlah (Rp)']:,.0f}")
+            tgl_str = row['Tanggal'].date() if pd.notnull(row['Tanggal']) else "❓ Invalid Tanggal"
+            st.write(f"📅 **{tgl_str}** | {row['Kategori']} | {row['Keterangan']} — Rp {row['Jumlah (Rp)']:,.0f}")
         with col2:
             if st.button("Edit", key=f"edit_{i}"):
                 st.session_state.edit_index = i
@@ -58,12 +76,12 @@ elif menu == "Buku Kas":
 
     st.divider()
 
-    # Form Tambah atau Edit
     edit_mode = "edit_index" in st.session_state
     st.subheader("✏️ Edit Transaksi" if edit_mode else "➕ Tambah Transaksi Baru")
+
     if edit_mode:
         row = kas_df.iloc[st.session_state.edit_index]
-        default_tgl = row["Tanggal"]
+        default_tgl = row["Tanggal"] if pd.notnull(row["Tanggal"]) else datetime.today()
         default_ket = row["Keterangan"]
         default_kat = row["Kategori"]
         default_jml = row["Jumlah (Rp)"]
@@ -101,19 +119,37 @@ elif menu == "Buku Kas":
             del st.session_state.edit_index
             st.experimental_rerun()
 
-# Anggota
+# -------------------------------
+# Data Anggota
+# -------------------------------
 elif menu == "Data Anggota":
     st.title("👥 Data Anggota")
-    st.dataframe(anggota_df)
+    if anggota_df.empty:
+        st.info("Belum ada data anggota.")
+    else:
+        st.dataframe(anggota_df)
 
+# -------------------------------
 # Simpan Pinjam
+# -------------------------------
 elif menu == "Simpan Pinjam":
     st.title("💰 Buku Simpan Pinjam")
-    st.dataframe(simpan_pinjam_df)
+    if simpan_pinjam_df.empty:
+        st.info("Belum ada data simpan pinjam.")
+    else:
+        st.dataframe(simpan_pinjam_df)
 
+# -------------------------------
 # Jurnal Umum
+# -------------------------------
 elif menu == "Jurnal Umum":
     st.title("📘 Jurnal Umum")
-    st.dataframe(jurnal_df)
+    if jurnal_df.empty:
+        st.info("Belum ada data jurnal.")
+    else:
+        st.dataframe(jurnal_df)
 
+# -------------------------------
+# Footer
+# -------------------------------
 st.sidebar.caption("Made with ❤️ for Koperasi Sumber Arta Wanita")
