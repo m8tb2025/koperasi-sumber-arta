@@ -1,0 +1,4 @@
+ID Transaksi,ID Anggota,Jenis,Jumlah (Rp),Tanggal
+SP001,A001,Simpanan Wajib,100000,2025-01-05
+SP002,A002,Pinjaman,500000,2025-01-10
+SP003,A003,Simpanan Sukarela,150000,2025-01-20
