@@ -16,7 +16,7 @@ kas_df['Tanggal'] = pd.to_datetime(kas_df['Tanggal'])
 st.sidebar.title("Koperasi Sumber Arta Wanita")
 menu = st.sidebar.selectbox("Pilih Menu", ["Dashboard", "Buku Kas", "Data Anggota", "Simpan Pinjam", "Jurnal Umum"])
 
-# Halaman Dashboard
+# Dashboard
 if menu == "Dashboard":
     st.title("📊 Dashboard Koperasi")
 
@@ -39,36 +39,79 @@ if menu == "Dashboard":
     plt.ylabel("Jumlah (Rp)")
     st.pyplot(fig)
 
+# Buku Kas
 elif menu == "Buku Kas":
     st.title("📒 Buku Kas")
-    st.dataframe(kas_df.sort_values(by="Tanggal", ascending=False))
 
-    with st.expander("Tambah Transaksi Baru"):
-        tgl = st.date_input("Tanggal", value=datetime.today())
-        ket = st.text_input("Keterangan")
-        kategori = st.selectbox("Kategori", ["Pemasukan", "Pengeluaran"])
-        jumlah = st.number_input("Jumlah (Rp)", step=1000)
+    st.subheader("Data Transaksi")
+    for i, row in kas_df.sort_values(by="Tanggal", ascending=False).reset_index().iterrows():
+        col1, col2 = st.columns([6, 1])
+        with col1:
+            st.write(f"📅 **{row['Tanggal'].date()}** | {row['Kategori']} | {row['Keterangan']} — Rp {row['Jumlah (Rp)']:,.0f}")
+        with col2:
+            if st.button("Edit", key=f"edit_{i}"):
+                st.session_state.edit_index = i
+            if st.button("❌", key=f"delete_{i}"):
+                kas_df = kas_df.drop(index=row['index'])
+                kas_df.to_csv("kas.csv", index=False)
+                st.experimental_rerun()
 
-        if st.button("Simpan Transaksi"):
+    st.divider()
+
+    # Form Tambah atau Edit
+    edit_mode = "edit_index" in st.session_state
+    st.subheader("✏️ Edit Transaksi" if edit_mode else "➕ Tambah Transaksi Baru")
+    if edit_mode:
+        row = kas_df.iloc[st.session_state.edit_index]
+        default_tgl = row["Tanggal"]
+        default_ket = row["Keterangan"]
+        default_kat = row["Kategori"]
+        default_jml = row["Jumlah (Rp)"]
+    else:
+        default_tgl = datetime.today()
+        default_ket = ""
+        default_kat = "Pemasukan"
+        default_jml = 0
+
+    tgl = st.date_input("Tanggal", value=default_tgl)
+    ket = st.text_input("Keterangan", value=default_ket)
+    kategori = st.selectbox("Kategori", ["Pemasukan", "Pengeluaran"], index=0 if default_kat == "Pemasukan" else 1)
+    jumlah = st.number_input("Jumlah (Rp)", step=1000, value=int(default_jml))
+
+    col_save, col_cancel = st.columns([1, 1])
+    with col_save:
+        if st.button("💾 Simpan"):
             new_data = pd.DataFrame({
-                "Tanggal": [tgl.strftime('%Y-%m-%d')],
+                "Tanggal": [tgl],
                 "Keterangan": [ket],
                 "Kategori": [kategori],
                 "Jumlah (Rp)": [jumlah]
             })
-            kas_df = pd.concat([kas_df, new_data], ignore_index=True)
+            if edit_mode:
+                kas_df.iloc[st.session_state.edit_index] = new_data.iloc[0]
+                del st.session_state.edit_index
+            else:
+                kas_df = pd.concat([kas_df, new_data], ignore_index=True)
             kas_df.to_csv("kas.csv", index=False)
-            st.success("Transaksi berhasil disimpan!")
+            st.success("✅ Data berhasil disimpan!")
             st.experimental_rerun()
 
+    with col_cancel:
+        if edit_mode and st.button("Batal"):
+            del st.session_state.edit_index
+            st.experimental_rerun()
+
+# Anggota
 elif menu == "Data Anggota":
     st.title("👥 Data Anggota")
     st.dataframe(anggota_df)
 
+# Simpan Pinjam
 elif menu == "Simpan Pinjam":
     st.title("💰 Buku Simpan Pinjam")
     st.dataframe(simpan_pinjam_df)
 
+# Jurnal Umum
 elif menu == "Jurnal Umum":
     st.title("📘 Jurnal Umum")
     st.dataframe(jurnal_df)
